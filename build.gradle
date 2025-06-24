@@ -46,11 +46,19 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 
+	// JWT
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
 	// ULID
-	implementation 'de.huxhorn.sulky:de.huxhorn.sulky.ulid:8.3.0'
+	implementation 'com.github.f4b6a3:ulid-creator:5.2.3'
 
 	// swagger
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+	
+	// Bean Validation (선택사항 - 경고 제거용)
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
 }
 

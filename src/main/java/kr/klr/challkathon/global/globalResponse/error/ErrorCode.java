@@ -24,7 +24,15 @@ public enum ErrorCode {
 	
 	// JWT 관련 에러
 	JWT_TOKEN_INVALID("4001", "유효하지 않은 JWT 토큰입니다."),
-	JWT_TOKEN_EXPIRED("4002", "만료된 JWT 토큰입니다.");
+	JWT_TOKEN_EXPIRED("4002", "만료된 JWT 토큰입니다."),
+	
+	// Exercise 관련 에러
+	EXERCISE_NOT_FOUND("5001", "운동 정보를 찾을 수 없습니다."),
+	EXERCISE_ALREADY_COMPLETED("5002", "이미 완료한 운동입니다."),
+	EXERCISE_RECORD_NOT_FOUND("5003", "운동 기록을 찾을 수 없습니다."),
+	
+	// Health 관련 에러
+	HEALTH_RECORD_NOT_FOUND("6001", "건강 기록을 찾을 수 없습니다.");
 
 	private final String code;
 	private final String defaultMessage;

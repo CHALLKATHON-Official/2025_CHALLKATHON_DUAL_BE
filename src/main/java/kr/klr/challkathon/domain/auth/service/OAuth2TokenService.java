@@ -1,6 +1,8 @@
 package kr.klr.challkathon.domain.auth.service;
 
 import kr.klr.challkathon.domain.auth.exception.OAuth2Exception;
+import kr.klr.challkathon.global.globalResponse.error.ErrorCode;
+import kr.klr.challkathon.global.globalResponse.error.GlobalException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -30,7 +32,7 @@ public class OAuth2TokenService {
             ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(registrationId);
             if (clientRegistration == null) {
                 log.error("지원하지 않는 OAuth registrationId: {}", registrationId);
-                throw OAuth2Exception.providerNotSupported(registrationId);
+                throw new GlobalException(ErrorCode.BAD_REQUEST, "지원하지 않는 OAuth 제공자입니다: " + registrationId);
             }
 
             // 토큰 요청 파라미터 생성
@@ -54,7 +56,7 @@ public class OAuth2TokenService {
 
             if (response == null || !response.containsKey("access_token")) {
                 log.error("OAuth2 토큰 응답이 올바르지 않음: {}", response);
-                throw OAuth2Exception.accessTokenFailed(registrationId, "Invalid token response");
+                throw new GlobalException(ErrorCode.OAUTH_ACCESS_TOKEN_FAILED, "토큰 응답이 올바르지 않습니다");
             }
 
             // OAuth2AccessToken 생성
@@ -76,12 +78,9 @@ public class OAuth2TokenService {
                     registrationId, tokenType.getValue());
             
             return accessToken;
-            
-        } catch (OAuth2Exception e) {
-            throw e;
         } catch (Exception e) {
-            log.error("OAuth2 Access Token 교환 실패: registrationId={}, error={}", registrationId, e.getMessage(), e);
-            throw OAuth2Exception.accessTokenFailed(registrationId, e.getMessage());
+            log.error("OAuth2 Access Token 교환 실패: registrationId={}, error={}", registrationId, e.getMessage());
+            throw new GlobalException(ErrorCode.OAUTH_ACCESS_TOKEN_FAILED, e.getMessage());
         }
     }
 }

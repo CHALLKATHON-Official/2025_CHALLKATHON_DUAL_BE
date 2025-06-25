@@ -32,7 +32,7 @@ public class AppOAuth2Manager {
             // ClientRegistration에서 리다이렉트 URI 가져오기
             ClientRegistration clientRegistration = clientRegistrationRepository.findByRegistrationId(req.getProvider());
             if (clientRegistration == null) {
-                throw OAuth2Exception.providerNotSupported(req.getProvider());
+                throw new GlobalException(ErrorCode.BAD_REQUEST, "지원하지 않는 OAuth 제공자입니다: " + req.getProvider());
             }
             
             String redirectUri = clientRegistration.getRedirectUri();
@@ -46,13 +46,10 @@ public class AppOAuth2Manager {
             
             log.info("OAuth 로그인 성공: provider={}", req.getProvider());
             return jwtToken;
-            
-        } catch (OAuth2Exception e) {
-            log.error("OAuth 처리 실패: provider={}, error={}", req.getProvider(), e.getMessage());
-            throw e;
+
         } catch (Exception e) {
             log.error("OAuth 처리 중 예상치 못한 오류: provider={}, error={}", req.getProvider(), e.getMessage(), e);
-            throw OAuth2Exception.accessTokenFailed(req.getProvider(), e.getMessage());
+            throw new GlobalException(ErrorCode.INTERNAL_SERVER_ERROR, "provider: "+req.getProvider()+", "+e.getMessage());
         }
     }
 

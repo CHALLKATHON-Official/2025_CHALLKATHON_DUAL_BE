@@ -4,6 +4,8 @@ import kr.klr.challkathon.domain.auth.dto.request.OAuth2AppReq;
 import kr.klr.challkathon.domain.auth.service.OAuth2Service;
 import kr.klr.challkathon.domain.auth.service.OAuth2TokenService;
 import kr.klr.challkathon.domain.auth.exception.OAuth2Exception;
+import kr.klr.challkathon.global.globalResponse.error.ErrorCode;
+import kr.klr.challkathon.global.globalResponse.error.GlobalException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -65,6 +67,10 @@ public class AppOAuth2Manager {
      * OAuth 인증 URL 생성
      */
     public String getAuthorizationUrl(String provider) {
-        return oAuth2Service.getAuthorizationUrl(provider);
+        try {
+            return oAuth2Service.getAuthorizationUrl(provider);
+        } catch (Error e) {
+            throw new GlobalException(ErrorCode.BAD_REQUEST, "지원하지 않는 OAuth 제공자입니다: " + provider);
+        }
     }
 }

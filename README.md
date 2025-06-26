@@ -62,25 +62,8 @@
 * 배포: Expo EAS (앱), Vercel (웹)
 
 ## 📁 파일 구조
+<img width="277" alt="image" src="https://github.com/user-attachments/assets/e9cbb660-9513-48eb-992f-44529c9d833b" />
 
-```
-2025_CHALLKATHON_DUAL_FE/
-├── app/          # React Native 앱
-│   ├── screens/  # 화면 (auth, patient, caregiver, settings 등)
-│   ├── components/  # 공통/설정 UI
-│   ├── navigation/  # 네비게이터 구조
-│   ├── api/      # API 요청 모듈
-│   ├── store/    # Redux 슬라이스
-│   ├── assets/   # 이미지, 애니메이션
-│   └── constants/  # 색상, 폰트, 간격
-├── web/          # React + Vite 웹
-│   ├── pages/    # 데스크탑/모바일 페이지
-│   ├── components/  # 공통/모바일/데스크탑 컴포넌트
-│   ├── router/   # 라우터
-│   ├── styles/   # 글로벌 스타일, 테마
-│   └── public/   # 정적 파일
-└── README.md
-```
 
 ## 🔍 기능별 소개
 

@@ -11,9 +11,12 @@ import com.github.f4b6a3.ulid.UlidCreator;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "exercise_record")
+@Table(name = "exercise_record", indexes = {
+    @Index(name = "idx_exercise_record_user_date", columnList = "user_uid, exercise_date")
+})
 @Getter
 @Setter
 @Builder
@@ -36,6 +39,12 @@ public class ExerciseRecord extends BaseTime {
     
     @Column(name = "exercise_date", nullable = false)
     private LocalDate exerciseDate;
+
+    @Column(name = "start_time")
+    private LocalDateTime startTime;
+
+    @Column(name = "end_time")
+    private LocalDateTime endTime;
     
     @Column(name = "duration_minutes", nullable = false)
     private Integer durationMinutes;
@@ -48,6 +57,10 @@ public class ExerciseRecord extends BaseTime {
     
     @Column(name = "distance_km")
     private Double distanceKm;
+
+    // 페이스 (분/km)
+    @Column(name = "pace_min_per_km")
+    private Double paceMinPerKm;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "completion_status", nullable = false)
@@ -61,6 +74,13 @@ public class ExerciseRecord extends BaseTime {
     public void generateRecordId() {
         if (this.recordId == null) {
             this.recordId = UlidCreator.getUlid().toString();
+        }
+    }
+
+    // 페이스 계산 메서드
+    public void calculatePace() {
+        if (distanceKm != null && distanceKm > 0 && durationMinutes != null && durationMinutes > 0) {
+            this.paceMinPerKm = durationMinutes / distanceKm;
         }
     }
 }

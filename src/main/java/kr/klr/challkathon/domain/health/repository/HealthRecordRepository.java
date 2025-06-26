@@ -21,4 +21,15 @@ public interface HealthRecordRepository extends JpaRepository<HealthRecord, Stri
     
     @Query("SELECT hr FROM HealthRecord hr WHERE hr.user = :user ORDER BY hr.recordDate DESC LIMIT 7")
     List<HealthRecord> findRecentRecordsByUser(@Param("user") User user);
+    
+    Optional<HealthRecord> findTopByUserAndRecordDateOrderByRecordTimeDesc(User user, LocalDate recordDate);
+    
+    @Query("SELECT hr FROM HealthRecord hr WHERE hr.user = :user ORDER BY hr.recordTime DESC")
+    List<HealthRecord> findByUserOrderByRecordTimeDesc(@Param("user") User user);
+    
+    @Query("SELECT hr FROM HealthRecord hr WHERE hr.user = :user AND hr.recordDate BETWEEN :startDate AND :endDate ORDER BY hr.recordTime DESC")
+    List<HealthRecord> findByUserAndRecordDateBetweenOrderByRecordTimeDesc(
+            @Param("user") User user, 
+            @Param("startDate") LocalDate startDate, 
+            @Param("endDate") LocalDate endDate);
 }

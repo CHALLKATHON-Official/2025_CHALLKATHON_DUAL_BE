@@ -1,60 +1,54 @@
 package kr.klr.challkathon.domain.health.controller;
 
-import jakarta.validation.Valid;
-import kr.klr.challkathon.domain.health.dto.request.HealthRecordReq;
+import kr.klr.challkathon.domain.health.dto.request.PainRecordReq;
+import kr.klr.challkathon.domain.health.dto.response.PainRecordHistoryRes;
 import kr.klr.challkathon.domain.health.entity.HealthRecord;
 import kr.klr.challkathon.domain.health.service.HealthService;
+import kr.klr.challkathon.domain.user.entity.User;
 import kr.klr.challkathon.global.customAnnotation.CurrentUser;
 import kr.klr.challkathon.global.globalResponse.global.GlobalApiResponse;
-import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.format.annotation.DateTimeFormat.ISO;
 import org.springframework.web.bind.annotation.*;
-import kr.klr.challkathon.domain.health.spec.HealthControllerSpec;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+import jakarta.validation.Valid;
 import java.time.LocalDate;
-import java.util.List;
 
-@Slf4j
 @RestController
-@RequestMapping("/api/v1/health")
+@RequestMapping("/api/health")
 @RequiredArgsConstructor
-public class HealthController implements HealthControllerSpec {
-    
+@Tag(name = "Health", description = "건강 관련 API")
+public class HealthController {
+
     private final HealthService healthService;
-    
-    @Operation(summary = "건강상태 기록", description = "운동 후 건강상태/통증을 기록합니다.")
-    @PostMapping("/record")
-    public GlobalApiResponse<HealthRecord> recordHealthStatus(
-            @CurrentUser String userUid,
-            @Valid @RequestBody HealthRecordReq healthRecordReq) {
-        
-        HealthRecord response = healthService.recordHealthStatus(userUid, healthRecordReq);
-        
-        return GlobalApiResponse.success(response);
+
+    @PostMapping("/pain/record")
+    @Operation(summary = "수동 통증 기록", description = "사용자가 직접 통증을 기록합니다.")
+    public GlobalApiResponse<String> recordPain(
+            @CurrentUser User user,
+            @Valid @RequestBody PainRecordReq request) {
+        String message = healthService.recordPainManually(user, request);
+        return GlobalApiResponse.success(message);
     }
-    
-    @Operation(summary = "최근 건강 기록 조회", description = "최근 7일간의 건강 기록을 조회합니다.")
-    @GetMapping("/records/recent")
-    public GlobalApiResponse<List<HealthRecord>> getRecentHealthRecords(
-            @CurrentUser String userUid) {
-        
-        List<HealthRecord> response = healthService.getRecentHealthRecords(userUid);
-        
-        return GlobalApiResponse.success(response);
+
+    @PostMapping("/pain/record/after-exercise")
+    @Operation(summary = "운동 후 통증 기록", description = "운동 직후 통증을 기록합니다.")
+    public GlobalApiResponse<String> recordPainAfterExercise(
+            @CurrentUser User user,
+            @Valid @RequestBody PainRecordReq request) {
+        String message = healthService.recordPainAfterExercise(user, request);
+        return GlobalApiResponse.success(message);
     }
-    
-    @Operation(summary = "건강 기록 조회", description = "특정 기간의 건강 기록을 조회합니다.")
-    @GetMapping("/records")
-    public GlobalApiResponse<List<HealthRecord>> getHealthRecords(
-            @CurrentUser String userUid,
-            @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate endDate) {
-        
-        List<HealthRecord> response = healthService.getHealthRecords(userUid, startDate, endDate);
-        
+
+    @GetMapping("/pain/history")
+    @Operation(summary = "통증 기록 히스토리", description = "통증 기록 히스토리를 조회합니다.")
+    public GlobalApiResponse<PainRecordHistoryRes> getPainHistory(
+            @CurrentUser User user,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        PainRecordHistoryRes response = healthService.getPainRecordHistory(user, startDate, endDate);
         return GlobalApiResponse.success(response);
     }
 }

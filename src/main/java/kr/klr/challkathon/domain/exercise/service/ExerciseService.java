@@ -1,156 +1,213 @@
 package kr.klr.challkathon.domain.exercise.service;
 
-import kr.klr.challkathon.domain.exercise.dto.request.ExerciseRecordReq;
-import kr.klr.challkathon.domain.exercise.dto.response.ExerciseListRes;
-import kr.klr.challkathon.domain.exercise.dto.response.ExerciseRecordRes;
-import kr.klr.challkathon.domain.exercise.dto.response.ExerciseRes;
-import kr.klr.challkathon.domain.exercise.entity.*;
+import kr.klr.challkathon.domain.dashboard.service.DashboardService;
+import kr.klr.challkathon.domain.exercise.dto.request.SimpleExerciseRecordReq;
+import kr.klr.challkathon.domain.exercise.dto.request.WalkingExerciseRecordReq;
+import kr.klr.challkathon.domain.exercise.dto.response.*;
+import kr.klr.challkathon.domain.exercise.entity.Exercise;
+import kr.klr.challkathon.domain.exercise.entity.ExerciseRecord;
+import kr.klr.challkathon.domain.exercise.entity.ExerciseType;
 import kr.klr.challkathon.domain.exercise.repository.ExerciseRecordRepository;
 import kr.klr.challkathon.domain.exercise.repository.ExerciseRepository;
 import kr.klr.challkathon.domain.user.entity.User;
-import kr.klr.challkathon.domain.user.service.UserService;
 import kr.klr.challkathon.global.globalResponse.error.ErrorCode;
 import kr.klr.challkathon.global.globalResponse.error.GlobalException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ExerciseService {
-    
+
     private final ExerciseRepository exerciseRepository;
     private final ExerciseRecordRepository exerciseRecordRepository;
-    private final UserService userService;
-    
-    /**
-     * 실내 운동 목록 조회 (완료 여부 포함)
-     */
-    public ExerciseListRes getIndoorExercises(String userUid) {
-        User user = userService.findByUid(userUid);
+    private final DashboardService dashboardService;
+
+    public IndoorExerciseStatusRes getIndoorExerciseStatus(User user) {
         LocalDate today = LocalDate.now();
         
-        // 오늘 완료한 운동 ID 조회
-        Set<Long> completedExerciseIds = exerciseRecordRepository
-                .findByUserAndExerciseDateOrderByCreatedAtDesc(user, today)
-                .stream()
-                .map(record -> record.getExercise().getId())
-                .collect(Collectors.toSet());
+        // 오늘의 진행 상황
+        IndoorExerciseStatusRes.TodayProgress todayProgress = getTodayProgress(user, today);
         
-        // 모든 실내 운동 조회
-        List<Exercise> allIndoorExercises = exerciseRepository
-                .findActiveExercisesByTypeGroupedByCategory(ExerciseType.INDOOR);
+        // 필수 운동 목록
+        List<Exercise> requiredExercises = exerciseRepository.findByIsRequiredTrueAndIsActiveTrue();
+        List<IndoorExerciseStatusRes.ExerciseItem> requiredItems = createExerciseItems(requiredExercises, user, today, true);
         
-        // 필수 운동과 추천 운동으로 분리
-        List<ExerciseRes> requiredExercises = allIndoorExercises.stream()
-                .filter(exercise -> exercise.getCategory() == ExerciseCategory.REQUIRED)
-                .map(exercise -> ExerciseRes.fromEntity(exercise, completedExerciseIds.contains(exercise.getId())))
-                .collect(Collectors.toList());
+        // 추천 운동 목록
+        List<Exercise> recommendedExercises = exerciseRepository.findByIsRequiredFalseAndIsActiveTrue();
+        List<IndoorExerciseStatusRes.ExerciseItem> recommendedItems = createExerciseItems(recommendedExercises, user, today, false);
         
-        List<ExerciseRes> recommendedExercises = allIndoorExercises.stream()
-                .filter(exercise -> exercise.getCategory() == ExerciseCategory.RECOMMENDED)
-                .map(exercise -> ExerciseRes.fromEntity(exercise, completedExerciseIds.contains(exercise.getId())))
-                .collect(Collectors.toList());
-        
-        // 요약 정보 생성
-        int totalExercises = allIndoorExercises.size();
-        int completedExercises = completedExerciseIds.size();
-        int totalRequiredExercises = requiredExercises.size();
-        int completedRequiredExercises = (int) requiredExercises.stream()
-                .mapToLong(ex -> ex.getIsCompleted() ? 1 : 0)
-                .sum();
-        
-        double completionRate = totalExercises > 0 ? 
-                (double) completedExercises / totalExercises * 100 : 0.0;
-        
-        ExerciseListRes.ExerciseSummary summary = ExerciseListRes.ExerciseSummary.builder()
-                .totalExercises(totalExercises)
-                .completedExercises(completedExercises)
-                .totalRequiredExercises(totalRequiredExercises)
-                .completedRequiredExercises(completedRequiredExercises)
-                .completionRate(Math.round(completionRate * 10) / 10.0) // 소수점 1자리
-                .build();
-        
-        return ExerciseListRes.builder()
-                .requiredExercises(requiredExercises)
-                .recommendedExercises(recommendedExercises)
-                .summary(summary)
+        return IndoorExerciseStatusRes.builder()
+                .todayProgress(todayProgress)
+                .requiredExercises(requiredItems)
+                .recommendedExercises(recommendedItems)
                 .build();
     }
-    
-    /**
-     * 운동 기록 저장
-     */
+
+    public OutdoorExerciseStatusRes getOutdoorExerciseStatus(User user) {
+        // 최고 거리 기록
+        Double maxDistance = exerciseRecordRepository.getMaxDistanceByUser(user).orElse(0.0);
+        
+        // 전날 기록
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        List<ExerciseRecord> yesterdayRecords = exerciseRecordRepository.findByUserAndExerciseDate(user, yesterday);
+        
+        OutdoorExerciseStatusRes.YesterdayRecord yesterdayRecord = OutdoorExerciseStatusRes.YesterdayRecord.builder()
+                .durationMinutes(yesterdayRecords.stream().mapToInt(ExerciseRecord::getDurationMinutes).sum())
+                .distanceKm(yesterdayRecords.stream().mapToDouble(r -> r.getDistanceKm() != null ? r.getDistanceKm() : 0.0).sum())
+                .build();
+        
+        return OutdoorExerciseStatusRes.builder()
+                .maxDistanceRecord(maxDistance)
+                .yesterdayRecord(yesterdayRecord)
+                .build();
+    }
+
     @Transactional
-    public ExerciseRecordRes recordExercise(String userUid, ExerciseRecordReq request) {
-        User user = userService.findByUid(userUid);
+    public String recordWalkingExercise(User user, WalkingExerciseRecordReq request) {
         Exercise exercise = exerciseRepository.findById(request.getExerciseId())
-                .orElseThrow(() -> new GlobalException(ErrorCode.EXERCISE_NOT_FOUND));
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOT_FOUND, "운동 정보를 찾을 수 없습니다."));
         
-        LocalDate today = LocalDate.now();
-        
-        // 오늘 이미 완료한 운동인지 확인
-        exerciseRecordRepository.findByUserAndDateAndExercise(user, today, exercise.getId())
-                .ifPresent(existingRecord -> {
-                    throw new GlobalException(ErrorCode.EXERCISE_ALREADY_COMPLETED);
-                });
-        
-        // 칼로리 계산
-        Double caloriesBurned = exercise.getCaloriesPerMinute() != null ? 
-                exercise.getCaloriesPerMinute() * request.getDurationMinutes() : null;
-        
-        // 운동 기록 저장
         ExerciseRecord record = ExerciseRecord.builder()
                 .user(user)
                 .exercise(exercise)
-                .exerciseDate(today)
+                .exerciseDate(LocalDate.now())
+                .startTime(LocalDateTime.now().minusMinutes(request.getDurationMinutes()))
+                .endTime(LocalDateTime.now())
                 .durationMinutes(request.getDurationMinutes())
-                .caloriesBurned(caloriesBurned)
                 .steps(request.getSteps())
                 .distanceKm(request.getDistanceKm())
-                .completionStatus(CompletionStatus.COMPLETED)
+                .caloriesBurned(request.getCaloriesBurned())
                 .notes(request.getNotes())
                 .build();
         
-        ExerciseRecord savedRecord = exerciseRecordRepository.save(record);
+        // 페이스 계산
+        record.calculatePace();
         
-        log.info("운동 기록 저장 완료: user={}, exercise={}, duration={}분", 
-                userUid, exercise.getName(), request.getDurationMinutes());
+        exerciseRecordRepository.save(record);
         
-        return ExerciseRecordRes.fromEntity(savedRecord);
+        // 일일 통계 업데이트
+        dashboardService.updateDailyStats(user, LocalDate.now());
+        
+        return "가벼운 걷기 운동이 기록되었습니다.";
     }
-    
-    /**
-     * 사용자의 오늘 운동 기록 조회
-     */
-    public List<ExerciseRecordRes> getTodayExerciseRecords(String userUid) {
-        User user = userService.findByUid(userUid);
-        LocalDate today = LocalDate.now();
+
+    @Transactional
+    public String recordSimpleExercise(User user, SimpleExerciseRecordReq request) {
+        Exercise exercise = exerciseRepository.findById(request.getExerciseId())
+                .orElseThrow(() -> new GlobalException(ErrorCode.NOT_FOUND, "운동 정보를 찾을 수 없습니다."));
         
-        return exerciseRecordRepository.findByUserAndExerciseDateOrderByCreatedAtDesc(user, today)
-                .stream()
-                .map(ExerciseRecordRes::fromEntity)
+        ExerciseRecord record = ExerciseRecord.builder()
+                .user(user)
+                .exercise(exercise)
+                .exerciseDate(LocalDate.now())
+                .startTime(LocalDateTime.now().minusMinutes(request.getDurationMinutes()))
+                .endTime(LocalDateTime.now())
+                .durationMinutes(request.getDurationMinutes())
+                .notes(request.getNotes())
+                .build();
+        
+        exerciseRecordRepository.save(record);
+        
+        // 일일 통계 업데이트
+        dashboardService.updateDailyStats(user, LocalDate.now());
+        
+        return exercise.getName() + " 운동이 기록되었습니다.";
+    }
+
+    public ExerciseHistoryRes getExerciseHistory(User user, ExerciseType exerciseType, LocalDate startDate, LocalDate endDate) {
+        List<ExerciseRecord> records;
+        
+        if (exerciseType == null) {
+            // 전체 운동 기록
+            records = exerciseRecordRepository.findByUserAndExerciseDateBetweenOrderByExerciseDateDesc(user, startDate, endDate);
+        } else {
+            // 특정 타입의 운동 기록만
+            records = exerciseRecordRepository.findByUserAndExerciseDateBetweenOrderByExerciseDateDesc(user, startDate, endDate)
+                    .stream()
+                    .filter(record -> record.getExercise().getType() == exerciseType)
+                    .collect(Collectors.toList());
+        }
+        
+        // 통계 계산
+        ExerciseHistoryRes.ExerciseStatistics statistics = ExerciseHistoryRes.ExerciseStatistics.builder()
+                .totalExerciseCount(records.size())
+                .totalExerciseMinutes(records.stream().mapToInt(ExerciseRecord::getDurationMinutes).sum())
+                .totalSteps(records.stream().mapToInt(r -> r.getSteps() != null ? r.getSteps() : 0).sum())
+                .totalDistanceKm(records.stream().mapToDouble(r -> r.getDistanceKm() != null ? r.getDistanceKm() : 0.0).sum())
+                .totalCaloriesBurned(records.stream().mapToDouble(r -> r.getCaloriesBurned() != null ? r.getCaloriesBurned() : 0.0).sum())
+                .build();
+        
+        // 운동 기록 목록
+        List<ExerciseHistoryRes.ExerciseHistoryItem> historyItems = records.stream()
+                .map(record -> ExerciseHistoryRes.ExerciseHistoryItem.builder()
+                        .recordId(record.getRecordId())
+                        .exerciseType(record.getExercise().getType())
+                        .exerciseDate(record.getExerciseDate())
+                        .startTime(record.getStartTime())
+                        .exerciseName(record.getExercise().getName())
+                        .durationMinutes(record.getDurationMinutes())
+                        .steps(record.getSteps())
+                        .distanceKm(record.getDistanceKm())
+                        .caloriesBurned(record.getCaloriesBurned())
+                        .build())
                 .collect(Collectors.toList());
-    }
-    
-    /**
-     * 특정 기간 운동 기록 조회
-     */
-    public List<ExerciseRecordRes> getExerciseRecords(String userUid, LocalDate startDate, LocalDate endDate) {
-        User user = userService.findByUid(userUid);
         
-        return exerciseRecordRepository.findByUserAndExerciseDateBetweenOrderByExerciseDateDesc(
-                user, startDate, endDate)
-                .stream()
-                .map(ExerciseRecordRes::fromEntity)
+        return ExerciseHistoryRes.builder()
+                .statistics(statistics)
+                .exerciseRecords(historyItems)
+                .build();
+    }
+
+    private IndoorExerciseStatusRes.TodayProgress getTodayProgress(User user, LocalDate today) {
+        List<ExerciseRecord> todayRecords = exerciseRecordRepository.findByUserAndExerciseDate(user, today);
+        
+        // 필수 운동 리스트
+        List<Exercise> requiredExercises = exerciseRepository.findByIsRequiredTrueAndIsActiveTrue();
+        
+        // 완료된 필수 운동 개수
+        long completedRequired = todayRecords.stream()
+                .filter(record -> requiredExercises.stream()
+                        .anyMatch(exercise -> exercise.getId().equals(record.getExercise().getId())))
+                .count();
+        
+        // 총 운동 시간
+        int totalMinutes = todayRecords.stream().mapToInt(ExerciseRecord::getDurationMinutes).sum();
+        
+        // 필수 운동 완료율
+        double completionRate = requiredExercises.isEmpty() ? 1.0 : (double) completedRequired / requiredExercises.size();
+        
+        return IndoorExerciseStatusRes.TodayProgress.builder()
+                .completedRequiredExercises((int) completedRequired)
+                .totalExerciseMinutes(totalMinutes)
+                .requiredExerciseCompletionRate(completionRate)
+                .build();
+    }
+
+    private List<IndoorExerciseStatusRes.ExerciseItem> createExerciseItems(List<Exercise> exercises, User user, LocalDate today, boolean isRequired) {
+        List<ExerciseRecord> todayRecords = exerciseRecordRepository.findByUserAndExerciseDate(user, today);
+        
+        return exercises.stream()
+                .map(exercise -> {
+                    boolean isCompleted = todayRecords.stream()
+                            .anyMatch(record -> record.getExercise().getId().equals(exercise.getId()));
+                    
+                    return IndoorExerciseStatusRes.ExerciseItem.builder()
+                            .exerciseId(exercise.getId())
+                            .name(exercise.getName())
+                            .description(exercise.getDescription())
+                            .isCompleted(isCompleted)
+                            .isRequired(isRequired)
+                            .orderIndex(exercise.getOrderIndex())
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 }

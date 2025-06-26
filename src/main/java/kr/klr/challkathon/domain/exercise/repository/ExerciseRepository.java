@@ -20,4 +20,11 @@ public interface ExerciseRepository extends JpaRepository<Exercise, Long> {
     
     @Query("SELECT e FROM Exercise e WHERE e.type = :type AND e.isActive = true ORDER BY e.category, e.orderIndex")
     List<Exercise> findActiveExercisesByTypeGroupedByCategory(@Param("type") ExerciseType type);
+    
+    List<Exercise> findByIsRequiredTrueAndIsActiveTrue();
+    
+    List<Exercise> findByIsRequiredFalseAndIsActiveTrue();
+    
+    @Query("SELECT e FROM Exercise e WHERE e.isActive = true ORDER BY e.isRequired DESC, e.orderIndex ASC")
+    List<Exercise> findAllActiveExercisesOrderedByRequiredFirst();
 }

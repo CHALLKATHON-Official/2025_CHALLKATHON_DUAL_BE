@@ -14,6 +14,8 @@ import java.util.Optional;
 @Repository
 public interface ExerciseRecordRepository extends JpaRepository<ExerciseRecord, String> {
     
+    List<ExerciseRecord> findByUserAndExerciseDate(User user, LocalDate exerciseDate);
+    
     List<ExerciseRecord> findByUserAndExerciseDateOrderByCreatedAtDesc(User user, LocalDate exerciseDate);
     
     List<ExerciseRecord> findByUserAndExerciseDateBetweenOrderByExerciseDateDesc(
@@ -31,6 +33,9 @@ public interface ExerciseRecordRepository extends JpaRepository<ExerciseRecord, 
     @Query("SELECT SUM(er.caloriesBurned) FROM ExerciseRecord er WHERE er.user = :user AND er.exerciseDate = :date")
     Optional<Double> getTotalCaloriesByUserAndDate(@Param("user") User user, @Param("date") LocalDate date);
     
-    @Query("SELECT COUNT(DISTINCT er.exercise.id) FROM ExerciseRecord er WHERE er.user = :user AND er.exerciseDate = :date AND er.exercise.category = 'REQUIRED'")
+    @Query("SELECT COUNT(DISTINCT er.exercise.id) FROM ExerciseRecord er WHERE er.user = :user AND er.exerciseDate = :date AND er.exercise.isRequired = true")
     Long getCompletedRequiredExerciseCount(@Param("user") User user, @Param("date") LocalDate date);
+    
+    @Query("SELECT MAX(er.distanceKm) FROM ExerciseRecord er WHERE er.user = :user AND er.distanceKm IS NOT NULL")
+    Optional<Double> getMaxDistanceByUser(@Param("user") User user);
 }

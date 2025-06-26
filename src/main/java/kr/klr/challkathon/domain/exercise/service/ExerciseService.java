@@ -10,6 +10,7 @@ import kr.klr.challkathon.domain.exercise.entity.ExerciseType;
 import kr.klr.challkathon.domain.exercise.repository.ExerciseRecordRepository;
 import kr.klr.challkathon.domain.exercise.repository.ExerciseRepository;
 import kr.klr.challkathon.domain.user.entity.User;
+import kr.klr.challkathon.domain.user.repository.UserRepository;
 import kr.klr.challkathon.global.globalResponse.error.ErrorCode;
 import kr.klr.challkathon.global.globalResponse.error.GlobalException;
 import lombok.RequiredArgsConstructor;
@@ -29,8 +30,10 @@ public class ExerciseService {
     private final ExerciseRepository exerciseRepository;
     private final ExerciseRecordRepository exerciseRecordRepository;
     private final DashboardService dashboardService;
+    private final UserRepository userRepository;
 
-    public IndoorExerciseStatusRes getIndoorExerciseStatus(User user) {
+    public IndoorExerciseStatusRes getIndoorExerciseStatus(String userUid) {
+        User user = getUserByUid(userUid);
         LocalDate today = LocalDate.now();
         
         // 오늘의 진행 상황
@@ -51,7 +54,9 @@ public class ExerciseService {
                 .build();
     }
 
-    public OutdoorExerciseStatusRes getOutdoorExerciseStatus(User user) {
+    public OutdoorExerciseStatusRes getOutdoorExerciseStatus(String userUid) {
+        User user = getUserByUid(userUid);
+        
         // 최고 거리 기록
         Double maxDistance = exerciseRecordRepository.getMaxDistanceByUser(user).orElse(0.0);
         
@@ -71,7 +76,9 @@ public class ExerciseService {
     }
 
     @Transactional
-    public String recordWalkingExercise(User user, WalkingExerciseRecordReq request) {
+    public String recordWalkingExercise(String userUid, WalkingExerciseRecordReq request) {
+        User user = getUserByUid(userUid);
+        
         Exercise exercise = exerciseRepository.findById(request.getExerciseId())
                 .orElseThrow(() -> new GlobalException(ErrorCode.NOT_FOUND, "운동 정보를 찾을 수 없습니다."));
         
@@ -100,7 +107,9 @@ public class ExerciseService {
     }
 
     @Transactional
-    public String recordSimpleExercise(User user, SimpleExerciseRecordReq request) {
+    public String recordSimpleExercise(String userUid, SimpleExerciseRecordReq request) {
+        User user = getUserByUid(userUid);
+        
         Exercise exercise = exerciseRepository.findById(request.getExerciseId())
                 .orElseThrow(() -> new GlobalException(ErrorCode.NOT_FOUND, "운동 정보를 찾을 수 없습니다."));
         
@@ -122,7 +131,9 @@ public class ExerciseService {
         return exercise.getName() + " 운동이 기록되었습니다.";
     }
 
-    public ExerciseHistoryRes getExerciseHistory(User user, ExerciseType exerciseType, LocalDate startDate, LocalDate endDate) {
+    public ExerciseHistoryRes getExerciseHistory(String userUid, ExerciseType exerciseType, LocalDate startDate, LocalDate endDate) {
+        User user = getUserByUid(userUid);
+        
         List<ExerciseRecord> records;
         
         if (exerciseType == null) {
@@ -164,6 +175,11 @@ public class ExerciseService {
                 .statistics(statistics)
                 .exerciseRecords(historyItems)
                 .build();
+    }
+
+    private User getUserByUid(String userUid) {
+        return userRepository.findByUid(userUid)
+                .orElseThrow(() -> new GlobalException(ErrorCode.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
     }
 
     private IndoorExerciseStatusRes.TodayProgress getTodayProgress(User user, LocalDate today) {

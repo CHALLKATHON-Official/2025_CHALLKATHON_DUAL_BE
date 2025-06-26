@@ -8,6 +8,8 @@ import kr.klr.challkathon.domain.health.entity.HealthRecord;
 import kr.klr.challkathon.domain.health.repository.HealthRecordRepository;
 import kr.klr.challkathon.domain.user.entity.User;
 import kr.klr.challkathon.domain.user.repository.UserRepository;
+import kr.klr.challkathon.global.globalResponse.error.ErrorCode;
+import kr.klr.challkathon.global.globalResponse.error.GlobalException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +30,9 @@ public class HealthService {
     private final UserRepository userRepository;
 
     @Transactional
-    public String recordPainManually(User user, PainRecordReq request) {
+    public String recordPainManually(String userUid, PainRecordReq request) {
+        User user = getUserByUid(userUid);
+        
         HealthRecord record = HealthRecord.builder()
                 .user(user)
                 .recordDate(LocalDate.now())
@@ -51,7 +55,9 @@ public class HealthService {
     }
 
     @Transactional
-    public String recordPainAfterExercise(User user, PainRecordReq request) {
+    public String recordPainAfterExercise(String userUid, PainRecordReq request) {
+        User user = getUserByUid(userUid);
+        
         HealthRecord record = HealthRecord.builder()
                 .user(user)
                 .recordDate(LocalDate.now())
@@ -73,7 +79,9 @@ public class HealthService {
         return "운동 후 통증이 기록되었습니다. (총 " + saved.getTotalPainScore() + "/15점)";
     }
 
-    public PainRecordHistoryRes getPainRecordHistory(User user, LocalDate startDate, LocalDate endDate) {
+    public PainRecordHistoryRes getPainRecordHistory(String userUid, LocalDate startDate, LocalDate endDate) {
+        User user = getUserByUid(userUid);
+        
         List<HealthRecord> records;
         
         if (startDate != null && endDate != null) {
@@ -107,6 +115,11 @@ public class HealthService {
 
     public Optional<HealthRecord> getTodayLatestPainRecord(User user) {
         return healthRecordRepository.findTopByUserAndRecordDateOrderByRecordTimeDesc(user, LocalDate.now());
+    }
+
+    private User getUserByUid(String userUid) {
+        return userRepository.findByUid(userUid)
+                .orElseThrow(() -> new GlobalException(ErrorCode.UNAUTHORIZED, "사용자를 찾을 수 없습니다."));
     }
 
     private void checkPainIncreaseAlert(User user, HealthRecord currentRecord) {

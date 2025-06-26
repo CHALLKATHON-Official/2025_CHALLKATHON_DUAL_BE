@@ -2,6 +2,7 @@ package kr.klr.challkathon.domain.user.service;
 
 import kr.klr.challkathon.domain.user.dto.request.PatientProfileSetupReq;
 import kr.klr.challkathon.domain.user.dto.response.PatientLinkCodeRes;
+import kr.klr.challkathon.domain.user.dto.response.UserInfoRes;
 import kr.klr.challkathon.domain.user.dto.response.UserProfileStatusRes;
 import kr.klr.challkathon.domain.user.entity.PatientLinkCode;
 import kr.klr.challkathon.domain.user.entity.User;
@@ -59,9 +60,31 @@ public class UserService {
     }
 
     /**
+     * 사용자 정보 조회
+     */
+    public UserInfoRes getUserInfo(String userUid) {
+        User user = findByUid(userUid);
+        return UserInfoRes.builder()
+                .uid(user.getUid())
+                .username(user.getUsername())
+                .nickname(user.getNickname())
+                .email(user.getEmail())
+                .profileImage(user.getProfileImage())
+                .build();
+    }
+
+    /**
      * 사용자 프로필 상태 조회
      */
-    public UserProfileStatusRes getUserProfileStatus(User user) {
+    public UserProfileStatusRes getUserProfileStatus(String userUid) {
+        User user = findByUid(userUid);
+        return getUserProfileStatus(user);
+    }
+
+    /**
+     * 사용자 프로필 상태 조회 (내부용)
+     */
+    private UserProfileStatusRes getUserProfileStatus(User user) {
         UserProfileStatusRes.UserProfileStatusResBuilder builder = UserProfileStatusRes.builder()
                 .isPatientProfileComplete(user.getIsPatientProfileComplete())
                 .isGuardianProfileComplete(user.getIsGuardianProfileComplete());
@@ -93,7 +116,8 @@ public class UserService {
      * 환자 프로필 설정
      */
     @Transactional
-    public void setupPatientProfile(User user, PatientProfileSetupReq request) {
+    public void setupPatientProfile(String userUid, PatientProfileSetupReq request) {
+        User user = findByUid(userUid);
         user.setupPatientProfile(
                 request.getAge(),
                 request.getDisease(),
@@ -125,7 +149,8 @@ public class UserService {
      * 환자 정보 업데이트
      */
     @Transactional
-    public void updatePatientInfo(User user, PatientProfileSetupReq request) {
+    public void updatePatientInfo(String userUid, PatientProfileSetupReq request) {
+        User user = findByUid(userUid);
         if (!user.getIsPatientProfileComplete()) {
             throw new GlobalException(ErrorCode.BAD_REQUEST, "환자 프로필이 설정되지 않았습니다.");
         }
@@ -143,7 +168,8 @@ public class UserService {
      * 환자 연동 코드 생성
      */
     @Transactional
-    public PatientLinkCodeRes generatePatientLinkCode(User patient) {
+    public PatientLinkCodeRes generatePatientLinkCode(String userUid) {
+        User patient = findByUid(userUid);
         if (!patient.getIsPatientProfileComplete()) {
             throw new GlobalException(ErrorCode.BAD_REQUEST, "먼저 환자 프로필을 설정해주세요.");
         }
@@ -178,7 +204,9 @@ public class UserService {
      * 환자와 보호자 연동
      */
     @Transactional
-    public void linkPatientToGuardian(User guardian, String linkCode) {
+    public void linkPatientToGuardian(String guardianUid, String linkCode) {
+        User guardian = findByUid(guardianUid);
+        
         // 연동 코드 유효성 검증
         PatientLinkCode patientLinkCode = patientLinkCodeRepository.findByLinkCodeAndIsUsedFalse(linkCode)
                 .orElseThrow(() -> new GlobalException(ErrorCode.NOT_FOUND, "유효하지 않은 연동 코드입니다."));

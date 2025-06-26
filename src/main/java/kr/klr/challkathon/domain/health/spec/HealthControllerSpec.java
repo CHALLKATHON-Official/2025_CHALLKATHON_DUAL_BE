@@ -4,28 +4,29 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
-import kr.klr.challkathon.domain.health.dto.request.HealthRecordReq;
+import kr.klr.challkathon.domain.health.dto.request.PainRecordReq;
+import kr.klr.challkathon.domain.health.dto.response.PainRecordHistoryRes;
 import kr.klr.challkathon.global.globalResponse.global.GlobalApiResponse;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
-@Tag(name = "Health", description = "건강상태 기록 관련 API")
+@Tag(name = "Health", description = "건강 관련 API")
 public interface HealthControllerSpec {
 
-    @Operation(summary = "건강상태 기록", description = "운동 후 건강상태/통증을 기록합니다.")
-    @PostMapping("/api/v1/health/record")
-    GlobalApiResponse<?> recordHealthStatus(
+    @Operation(summary = "수동 통증 기록", description = "사용자가 직접 통증을 기록합니다.")
+    GlobalApiResponse<String> recordPain(
             @Parameter(hidden = true) String userUid,
-            HealthRecordReq healthRecordReq);
+            @Valid @RequestBody PainRecordReq request);
 
-    @Operation(summary = "최근 건강 기록 조회", description = "최근 7일간의 건강 기록을 조회합니다.")
-    @GetMapping("/api/v1/health/records/recent")
-    GlobalApiResponse<?> getRecentHealthRecords(
-            @Parameter(hidden = true) String userUid);
-
-    @Operation(summary = "건강 기록 조회", description = "특정 기간의 건강 기록을 조회합니다.")
-    @GetMapping("/api/v1/health/records")
-    GlobalApiResponse<?> getHealthRecords(
+    @Operation(summary = "운동 후 통증 기록", description = "운동 직후 통증을 기록합니다.")
+    GlobalApiResponse<String> recordPainAfterExercise(
             @Parameter(hidden = true) String userUid,
-            LocalDate startDate,
-            LocalDate endDate);
-} 
+            @Valid @RequestBody PainRecordReq request);
+
+    @Operation(summary = "통증 기록 히스토리", description = "통증 기록 히스토리를 조회합니다.")
+    GlobalApiResponse<PainRecordHistoryRes> getPainHistory(
+            @Parameter(hidden = true) String userUid,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate);
+}

@@ -38,17 +38,10 @@ public class GuardianService {
     private final HealthRecordRepository healthRecordRepository;
 
     /**
-     * 연동 코드로 환자와 보호자 연결
-     */
-    @Transactional
-    public void linkPatient(User guardian, String linkCode) {
-        userService.linkPatientToGuardian(guardian, linkCode);
-    }
-
-    /**
      * 보호자 대시보드 조회
      */
-    public GuardianDashboardRes getGuardianDashboard(User guardian) {
+    public GuardianDashboardRes getGuardianDashboard(String guardianUid) {
+        User guardian = userService.findByUid(guardianUid);
         validateGuardian(guardian);
         
         User patient = guardian.getGuardianTargetPatient();
@@ -87,7 +80,8 @@ public class GuardianService {
     /**
      * 환자 상세 정보 조회
      */
-    public PatientDetailRes getPatientDetail(User guardian) {
+    public PatientDetailRes getPatientDetail(String guardianUid) {
+        User guardian = userService.findByUid(guardianUid);
         validateGuardian(guardian);
         
         User patient = guardian.getGuardianTargetPatient();
@@ -122,7 +116,9 @@ public class GuardianService {
      * 알림 읽음 처리
      */
     @Transactional
-    public void markAlertAsRead(User guardian, String alertId) {
+    public void markAlertAsRead(String guardianUid, String alertId) {
+        User guardian = userService.findByUid(guardianUid);
+        
         GuardianAlert alert = guardianAlertRepository.findById(alertId)
                 .orElseThrow(() -> new GlobalException(ErrorCode.NOT_FOUND, "알림을 찾을 수 없습니다."));
         

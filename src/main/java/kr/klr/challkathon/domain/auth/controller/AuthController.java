@@ -22,6 +22,7 @@ public class AuthController implements AuthControllerSpec {
      * OAuth2 콜백 처리 (Spring Security OAuth2 Client 사용)
      */
     @PostMapping("/oauth/callback")
+    @Override
     public GlobalApiResponse<Map<String, String>> oauthCallback(@RequestBody OAuth2AppReq req) {
         log.info("OAuth 콜백 요청: provider={}", req.getProvider());
         
@@ -39,6 +40,7 @@ public class AuthController implements AuthControllerSpec {
      * OAuth2 제공자별 로그인 URL 제공 (OAuth2 Client 기반)
      */
     @GetMapping("/oauth/{provider}/url")
+    @Override
     public GlobalApiResponse<Map<String, String>> getOAuthUrl(@PathVariable String provider) {
         log.info("OAuth URL 요청: provider={}", provider);
         String authUrl = appOAuth2Manager.getAuthorizationUrl(provider);
@@ -54,6 +56,7 @@ public class AuthController implements AuthControllerSpec {
      * 지원하는 OAuth 제공자 목록
      */
     @GetMapping("/oauth/providers")
+    @Override
     public GlobalApiResponse<Map<String, Serializable>> getSupportedProviders() {
         String[] providers = appOAuth2Manager.getSupportedProviders();
         

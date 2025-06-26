@@ -10,6 +10,9 @@ import kr.klr.challkathon.domain.exercise.repository.ExerciseRepository;
 import kr.klr.challkathon.domain.health.entity.HealthRecord;
 import kr.klr.challkathon.domain.health.repository.HealthRecordRepository;
 import kr.klr.challkathon.domain.user.entity.User;
+import kr.klr.challkathon.domain.user.repository.UserRepository;
+import kr.klr.challkathon.global.globalResponse.error.ErrorCode;
+import kr.klr.challkathon.global.globalResponse.error.GlobalException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,15 +34,18 @@ public class DashboardService {
     private final ExerciseRecordRepository exerciseRecordRepository;
     private final ExerciseRepository exerciseRepository;
     private final HealthRecordRepository healthRecordRepository;
+    private final UserRepository userRepository;
 
-    public PatientDashboardRes getPatientDashboard(User user) {
+    public PatientDashboardRes getPatientDashboard(String userUid) {
+        User selectedUser = userRepository.findByUid(userUid)
+                .orElseThrow(() -> new GlobalException(ErrorCode.BAD_REQUEST, "User가 발견되지 않았습니다." + userUid));
         LocalDate today = LocalDate.now();
         
         // 오늘의 요약 데이터
-        PatientDashboardRes.TodaySummary todaySummary = getTodaySummary(user, today);
+        PatientDashboardRes.TodaySummary todaySummary = getTodaySummary(selectedUser, today);
         
         // 주간 걸음 수 데이터
-        PatientDashboardRes.WeeklySteps weeklySteps = getWeeklySteps(user, today);
+        PatientDashboardRes.WeeklySteps weeklySteps = getWeeklySteps(selectedUser, today);
         
         return PatientDashboardRes.builder()
                 .todaySummary(todaySummary)
